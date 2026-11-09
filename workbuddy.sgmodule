@@ -1,0 +1,34 @@
+#!name = WorkBuddy 签到（Surge 模块）
+#!desc = 腾讯 WorkBuddy「Buddy 加油站」每日自动签到：令牌捕获重写 + 每日签到定时任务 + MITM 主机名。安装后登录一次 App/小程序即可自动捕获长效令牌，之后每日 09:03 自动签到。
+#!author = roamout
+#!homepage = https://github.com/roamout/workbuddy-surge
+
+# ============================================================
+# 安装与使用说明
+# ------------------------------------------------------------
+# 1. 模块里脚本默认走 GitHub raw（raw.githubusercontent.com）。
+#    国内网络请改用下方注释掉的 jsDelivr 版本（把对应行的 URL 换成
+#    https://cdn.jsdelivr.net/gh/roamout/workbuddy-surge@main/... 即可）。
+# 2. MITM：首次需在 Surge 开启「MitM」并安装、信任证书。
+# 3. 打开 WorkBuddy App / 小程序，退出账号重新登录一次，
+#    收到「✅ WorkBuddy 令牌捕获成功」通知即完成捕获。
+# 4. 捕获成功后，可停用本模块的「捕获重写」部分（或整模块），
+#    只保留每日签到定时任务；令牌会随签到自动滚动续期，无需再管。
+# ============================================================
+
+[Script]
+# ============ 令牌捕获（一次性，捕获成功后可停用） ============
+# 1) 刷新令牌接口【请求头】：抓取 X-Refresh-Token
+http-request ^https:\/\/copilot\.tencent\.com\/v2\/plugin\/auth\/token\/refresh script-path=https://raw.githubusercontent.com/roamout/workbuddy-surge/main/workbuddy_capture_token.surge.js, requires-body=false, tag=WorkBuddy令牌捕获-请求头
+
+# 2) 三个域名族下的所有 JSON 响应【响应体】：字段名 + Offline 特征双提取
+http-response ^https:\/\/copilot\.tencent\.com\/ script-path=https://raw.githubusercontent.com/roamout/workbuddy-surge/main/workbuddy_capture_token.surge.js, requires-body=true, max-size=2097152, tag=WorkBuddy令牌捕获-响应体-copilot
+http-response ^https:\/\/[a-z.]*workbuddy\.(cn|com)\/ script-path=https://raw.githubusercontent.com/roamout/workbuddy-surge/main/workbuddy_capture_token.surge.js, requires-body=true, max-size=2097152, tag=WorkBuddy令牌捕获-响应体-workbuddy
+http-response ^https:\/\/[a-z.]*codebuddy\.(cn|com)\/ script-path=https://raw.githubusercontent.com/roamout/workbuddy-surge/main/workbuddy_capture_token.surge.js, requires-body=true, max-size=2097152, tag=WorkBuddy令牌捕获-响应体-codebuddy
+
+# ============ 每日签到（长期运行，每天 09:03 避开整点） ============
+cron "3 9 * * *" script-path=https://raw.githubusercontent.com/roamout/workbuddy-surge/main/workbuddy_checkin.surge.js, tag=WorkBuddy签到
+
+# ============ MITM 主机名 ============
+[MITM]
+hostname = %APPEND% copilot.tencent.com, *.workbuddy.cn, *.workbuddy.com, *.codebuddy.cn, *.codebuddy.com

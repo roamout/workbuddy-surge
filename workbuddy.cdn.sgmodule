@@ -1,0 +1,24 @@
+#!name = WorkBuddy 签到（Surge 模块 · jsDelivr CDN 版）
+#!desc = 腾讯 WorkBuddy「Buddy 加油站」每日自动签到（CDN 版）：脚本走 cdn.jsdelivr.net，适合国内网络。令牌捕获重写 + 每日签到定时任务 + MITM 主机名。
+#!author = roamout
+#!homepage = https://github.com/roamout/workbuddy-surge
+
+# ============================================================
+# 国内网络推荐本版本：脚本全部走 jsDelivr CDN，不依赖 raw.githubusercontent.com
+# 使用说明同 workbuddy.sgmodule（raw 版）。
+# ============================================================
+
+[Script]
+# ============ 令牌捕获（一次性，捕获成功后可停用） ============
+http-request ^https:\/\/copilot\.tencent\.com\/v2\/plugin\/auth\/token\/refresh script-path=https://cdn.jsdelivr.net/gh/roamout/workbuddy-surge@main/workbuddy_capture_token.surge.js, requires-body=false, tag=WorkBuddy令牌捕获-请求头
+
+http-response ^https:\/\/copilot\.tencent\.com\/ script-path=https://cdn.jsdelivr.net/gh/roamout/workbuddy-surge@main/workbuddy_capture_token.surge.js, requires-body=true, max-size=2097152, tag=WorkBuddy令牌捕获-响应体-copilot
+http-response ^https:\/\/[a-z.]*workbuddy\.(cn|com)\/ script-path=https://cdn.jsdelivr.net/gh/roamout/workbuddy-surge@main/workbuddy_capture_token.surge.js, requires-body=true, max-size=2097152, tag=WorkBuddy令牌捕获-响应体-workbuddy
+http-response ^https:\/\/[a-z.]*codebuddy\.(cn|com)\/ script-path=https://cdn.jsdelivr.net/gh/roamout/workbuddy-surge@main/workbuddy_capture_token.surge.js, requires-body=true, max-size=2097152, tag=WorkBuddy令牌捕获-响应体-codebuddy
+
+# ============ 每日签到（长期运行，每天 09:03） ============
+cron "3 9 * * *" script-path=https://cdn.jsdelivr.net/gh/roamout/workbuddy-surge@main/workbuddy_checkin.surge.js, tag=WorkBuddy签到
+
+# ============ MITM 主机名 ============
+[MITM]
+hostname = %APPEND% copilot.tencent.com, *.workbuddy.cn, *.workbuddy.com, *.codebuddy.cn, *.codebuddy.com
